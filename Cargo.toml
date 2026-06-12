@@ -1,0 +1,44 @@
+[package]
+name = "Astriveil"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "shared"
+path = "shared/lib.rs"
+
+[[bin]]
+name = "server"
+path = "server/lib.rs"
+
+[[bin]]
+name = "client"
+path = "client/lib.rs"
+
+[dependencies]
+bincode = "1.3.3"
+bytemuck = {version = "1.24.0", features=["derive"]}
+cached = "0.56.0"
+image = "0.25.9"
+instant = "0.1.13"
+nalgebra = "0.34.1"
+noise = "0.9.0"
+once_cell = "1.21.3"
+pollster = "0.4.0"
+serde = {version = "1.0.228", features=["derive", "rc"]}
+serde_json = "1.0.149"
+tokio = {version = "1.49.0", features=["full"]}
+wgpu = "29.0.0"
+winit = "0.30.12"
+message-io = "0.19.0"
+axum-server = {version="0.8.0", features=["tls-rustls"]}
+gltf = {version="1.4", features=["names", "extras"]}
+colored = "3.1.1"
+argon2 = {version="0.5.3", features=["std"]}
+glyphon = "0.11.0"
+itertools = "0.14.0"
+slab = "0.4.12"
+getset = "=0.1.6"
+
+[build-dependencies]
+copy_to_output = "2.2.0"

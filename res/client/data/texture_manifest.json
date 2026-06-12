@@ -1,0 +1,22 @@
+[
+    {
+        "name": "grass-top",
+        "path": "grass-top.png",
+        "filter": "nearest"
+    },
+    {
+        "name": "grass-side",
+        "path": "grass-side.png",
+        "filter": "nearest"
+    },
+    {
+        "name": "dirt",
+        "path": "dirt.png",
+        "filter": "nearest"
+    },
+    {
+        "name": "stone",
+        "path": "stone.png",
+        "filter": "nearest"
+    }
+]

@@ -1,0 +1,4 @@
+> client asks auth for a session token tied to a specific server that they wish to join
+> client then gives that token to the server in question
+> the server asks auth if it is valid, and if so then the auth invalidates the token and the server lets them in
+> server gives client a token that will be used for further communication
