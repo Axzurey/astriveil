@@ -39,9 +39,9 @@ impl<'a> ApplicationHandler for ScreenDisplay<'a> {
             &mut self,
             event_loop: &winit::event_loop::ActiveEventLoop,
             window_id: winit::window::WindowId,
-            event: winit::event::WindowEvent,
+            eventm: winit::event::WindowEvent,
         ) {
-        match event {
+        match eventm.clone() {
             WindowEvent::CloseRequested => {
                 event_loop.exit();
             },
@@ -53,21 +53,52 @@ impl<'a> ApplicationHandler for ScreenDisplay<'a> {
                 let dt = Instant::now().duration_since(self.last_frame).as_secs_f32();
                 self.last_frame = Instant::now();
                 
-                self.gamecontroller.as_mut().unwrap().on_window_update(dt);
+                self.gamecontroller.as_mut().unwrap().on_window_update(dt, self.window.clone().unwrap());
                 self.window.as_ref().unwrap().request_redraw();
             },
             WindowEvent::MouseInput { device_id, state, button } => {
                 let gamecontroller = self.gamecontroller.as_mut().unwrap();
+                let response = gamecontroller.egui_state.on_window_event(
+                    self.window.as_ref().unwrap(),
+                    &eventm
+                );
+                if response.consumed {
+                    return;
+                }
                 gamecontroller.on_window_mouse_event(button, state);
             }
             WindowEvent::KeyboardInput { device_id, event, is_synthetic } => {
                 let gamecontroller = self.gamecontroller.as_mut().unwrap();
-
+                let response = gamecontroller.egui_state.on_window_event(
+                    self.window.as_ref().unwrap(),
+                    &eventm
+                );
+                if response.consumed {
+                    return;
+                }
                 gamecontroller.on_window_key_press(event);
             },
             WindowEvent::CursorMoved { device_id, position } => {
                 let gamecontroller = self.gamecontroller.as_mut().unwrap();
+                let response = gamecontroller.egui_state.on_window_event(
+                    self.window.as_ref().unwrap(),
+                    &eventm
+                );
+                if response.consumed {
+                    return;
+                }
                 gamecontroller.set_mouse_position(Vector2::new(position.x as f32, position.y as f32));
+            },
+            | WindowEvent::MouseWheel { .. }
+            | WindowEvent::Touch { .. } => {
+                let gc = self.gamecontroller.as_mut().unwrap();
+                let response = gc.egui_state.on_window_event(
+                    self.window.as_ref().unwrap(),
+                    &eventm
+                );
+                if response.consumed {
+                    return;
+                }
             }
             _ => ()
         }

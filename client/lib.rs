@@ -9,7 +9,7 @@ mod screendisplay;
 mod gamecontroller;
 mod gameloop;
 mod network;
-mod plantain;
+mod interface;
 
 #[tokio::main]
 pub async fn main() {

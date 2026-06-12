@@ -1,11 +1,13 @@
 use std::sync::Arc;
 
+use egui::{FullOutput, Id, RawInput};
 use nalgebra::{Point3, Vector2};
 use shared::{loaders::{model_bin::ModelBin, texture_bin::TextureBin}, world::entities::zimzam::ZimZam};
 use wgpu::{BackendOptions, CurrentSurfaceTexture, MemoryBudgetThresholds, TextureFormat};
 use winit::{dpi::PhysicalSize, event::{ElementState, KeyEvent, MouseButton}, keyboard::PhysicalKey};
-
-use crate::{gameloop::{entitybin::EntityBin, world::World}, nominal::camera::Camera, plantain::{elements::{element::UiElement, frame::Frame, image_frame::ImageFrame, screen::{Screen, UiLayer}, textbox::TextBox, textlabel::TextLabel}, render_queue::UiRenderQueue}, renderer::renderer::Renderer};
+use egui_wgpu::{Renderer as EguiRenderer, RendererOptions};
+use egui_winit::State as EguiWinitState;
+use crate::{gameloop::{entitybin::EntityBin, world::World}, interface::{buttons::styled_button, pages::main_screen::main_screen}, nominal::camera::Camera, renderer::renderer::Renderer};
 
 struct WorldState {
     pub world: World,
@@ -46,6 +48,9 @@ pub struct GameBindgroups {
 }
 
 pub struct GameController<'a> {
+    pub egui_state: EguiWinitState,
+    egui_renderer: EguiRenderer,
+    egui_ctx: egui::Context,
     game_state: GameState,
     renderer: Renderer,
     surface: wgpu::Surface<'a>,
@@ -55,8 +60,6 @@ pub struct GameController<'a> {
     window_size: winit::dpi::PhysicalSize<u32>,
     surface_format: wgpu::TextureFormat,
     game_bindgroups: GameBindgroups,
-    ui_renderqueue: UiRenderQueue,
-    ui_screen: Screen,
     model_bin: ModelBin,
     mouse_position: Vector2<f32>
 }
@@ -71,7 +74,7 @@ impl<'a> GameController<'a> {
             display: None
         });
 
-        let surface = instance.create_surface(window).unwrap();
+        let surface = instance.create_surface(window.clone()).unwrap();
 
         let adapter = instance.request_adapter(&wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::HighPerformance,
@@ -145,18 +148,27 @@ impl<'a> GameController<'a> {
 
         let game_state = GameState::join_new_world(size.width as f32 / size.height as f32, 70., &device, &game_bindgroups.camera_layout, &game_bindgroups.texture_bin, &model_bin);
 
-        let mut ui_screen = Screen::new(&device, size.width, size.height);
+        let egui_ctx = egui::Context::default();
 
-        let ui_renderqueue = UiRenderQueue::new(&device, &queue, vec![Some(&game_bindgroups.texture_bin.block_texture_bindgroup_layout), Some(&ui_screen.cam_bgl)], surface_format);
+        let egui_state = EguiWinitState::new(
+            egui_ctx.clone(),
+            egui::ViewportId::ROOT,
+            window.as_ref(),
+            None,
+            None,
+            None,
+        );
 
-        //ui_screen.add_child(Frame::new());
-        //ui_screen.add_child(ImageFrame::new());
-        let mut label = TextBox::new("hmmm");
-        label.set_layer(UiLayer::Menu);
-
-        ui_screen.add_child(label);
+        let egui_renderer = EguiRenderer::new(
+            &device,
+            surface_format,
+            RendererOptions::default()
+        );
 
         Self {
+            egui_ctx,
+            egui_renderer,
+            egui_state,
             game_state,
             renderer,
             device,
@@ -166,8 +178,6 @@ impl<'a> GameController<'a> {
             surface_format,
             window_size: size,
             game_bindgroups,
-            ui_renderqueue,
-            ui_screen,
             model_bin,
             mouse_position: Vector2::identity()
         }
@@ -177,7 +187,15 @@ impl<'a> GameController<'a> {
         self.mouse_position = pos;
     }
 
-    pub fn on_window_update(&mut self, dt: f32) {
+    pub fn draw_interface(&mut self, raw_input: RawInput) -> FullOutput {
+        let full_output = self.egui_ctx.run_ui(raw_input, |ctx| {
+            main_screen(ctx, (self.window_size.width, self.window_size.height));
+        });
+
+        full_output
+    }
+
+    pub fn on_window_update(&mut self, dt: f32, window: Arc<winit::window::Window>) {
         let mut output = match self.surface.get_current_texture() {
             CurrentSurfaceTexture::Suboptimal(output) => {
                 self.surface.configure(&self.device, &self.surface_config);
@@ -206,11 +224,6 @@ impl<'a> GameController<'a> {
             label: Some("primary encoder")
         });
 
-        self.ui_screen.get_children_mut_of_type::<Frame>().for_each(|v| {
-            let rot = v.get_rotation() + 0.001;
-            v.set_rotation(rot);
-        });
-
         match &mut self.game_state {
             GameState::InWorld(worldstate) => {
                 worldstate.camera.update_camera(dt);
@@ -221,11 +234,53 @@ impl<'a> GameController<'a> {
             _ => {}
         }
 
-        self.ui_renderqueue.render(&self.device, &self.queue, &mut output, &mut view, &mut encoder, &self.ui_screen, &self.game_bindgroups, &self.mouse_position);
+        let raw_input = self.egui_state.take_egui_input(&window);
+        
+        let full_output = self.draw_interface(raw_input);
+
+        self.egui_state.handle_platform_output(&window, full_output.platform_output);
+
+        let tris = self.egui_ctx.tessellate(full_output.shapes, full_output.pixels_per_point);
+
+        for (id, delta) in full_output.textures_delta.set {
+            self.egui_renderer.update_texture(&self.device, &self.queue, id, &delta);
+        }
+
+        let screen_desc = egui_wgpu::ScreenDescriptor {
+            size_in_pixels: [self.surface_config.width, self.surface_config.height],
+            pixels_per_point: full_output.pixels_per_point,
+        };
+
+        self.egui_renderer.update_buffers(
+            &self.device, &self.queue, &mut encoder, &tris, &screen_desc
+        );
+
+        {
+            let mut egui_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("egui pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load, // don't clear, composite on top
+                        store: wgpu::StoreOp::Store,
+                    },
+                    depth_slice: None
+                })],
+                depth_stencil_attachment: None,
+                ..Default::default()
+            }).forget_lifetime();
+
+            self.egui_renderer.render(&mut egui_pass, &tris, &screen_desc);
+            
+        }
+
+        for id in full_output.textures_delta.free {
+            self.egui_renderer.free_texture(&id);
+        }
 
         self.queue.submit([encoder.finish()]);
         output.present();
-        self.ui_renderqueue.atlas.trim();
     }
 
     pub fn on_window_resized(&mut self, new_size: PhysicalSize<u32>) {
@@ -235,7 +290,8 @@ impl<'a> GameController<'a> {
         self.surface.configure(&self.device, &self.surface_config);
 
         self.renderer.resize(new_size, &self.device);
-        self.ui_screen.update_dims(&self.queue, new_size.width, new_size.height);
+
+        self.window_size = new_size;
 
         match &mut self.game_state {
             GameState::InWorld(worldstate) => {
@@ -249,9 +305,7 @@ impl<'a> GameController<'a> {
     }
 
     pub fn on_window_key_press(&mut self, event: KeyEvent) {
-        if self.ui_screen.key_event(&event) { //event consumed by ui
-            return;
-        }
+        
         match &mut self.game_state {
             GameState::InWorld(worldstate) => {
                 match event.physical_key {
@@ -263,10 +317,7 @@ impl<'a> GameController<'a> {
         }
     }
     pub fn on_window_mouse_event(&mut self, button: MouseButton, state: ElementState) {
-        println!("{:?} {:?}", button, state);
-        if self.ui_screen.mouse_event(&button, &state, &self.mouse_position) { //event consumed by ui
-            return;
-        }
+       
     }
     pub fn on_window_mouse_motion(&mut self, dx: f64, dy: f64) {
         match &mut self.game_state {
