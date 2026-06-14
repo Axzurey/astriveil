@@ -2,10 +2,10 @@ use egui::{Color32, Rect};
 use nalgebra::Vector2;
 
 pub struct ButtonColors {
-    hover: Color32,
-    background: Color32,
-    text: Color32,
-    click: Color32
+    pub hover: Color32,
+    pub background: Color32,
+    pub text: Color32,
+    pub click: Color32
 }
 
 impl Default for ButtonColors {
@@ -20,10 +20,10 @@ impl Default for ButtonColors {
 }
 
 pub struct ButtonStyle {
-    colors: ButtonColors,
-    size: Vector2<f32>,
-    position: Vector2<f32>,
-    font_size: f32
+    pub colors: ButtonColors,
+    pub size: Vector2<f32>,
+    pub position: Vector2<f32>,
+    pub font_size: f32
 }
 
 impl Default for ButtonStyle {
@@ -31,7 +31,7 @@ impl Default for ButtonStyle {
         Self {
             size: Vector2::new(150., 65.),
             colors: ButtonColors::default(),
-            position: Vector2::new(50., 50.),
+            position: Vector2::new(0., 0.),
             font_size: 16.0
         }
     }
@@ -62,8 +62,6 @@ pub fn styled_button(ui: &mut egui::Ui, label: &str, style: ButtonStyle) -> egui
         egui::FontId::proportional(style.font_size),
         style.colors.text,
     );
-
-    //FontDefinitions for info on adding fonts
 
     response
 }

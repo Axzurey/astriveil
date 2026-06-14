@@ -7,7 +7,7 @@ use wgpu::{BackendOptions, CurrentSurfaceTexture, MemoryBudgetThresholds, Textur
 use winit::{dpi::PhysicalSize, event::{ElementState, KeyEvent, MouseButton}, keyboard::PhysicalKey};
 use egui_wgpu::{Renderer as EguiRenderer, RendererOptions};
 use egui_winit::State as EguiWinitState;
-use crate::{gameloop::{entitybin::EntityBin, world::World}, interface::{buttons::styled_button, pages::main_screen::main_screen}, nominal::camera::Camera, renderer::renderer::Renderer};
+use crate::{gameloop::{entitybin::EntityBin, world::World}, interface::{buttons::styled_button, pages::main_screen::main_screen, uictx::load_fonts}, nominal::camera::Camera, renderer::renderer::Renderer};
 
 struct WorldState {
     pub world: World,
@@ -16,7 +16,8 @@ struct WorldState {
 }
 
 enum GameState {
-    MainMenu,
+    //Serverip
+    MainMenu(String),
     WorldSelect,
     InWorld(WorldState)
 }
@@ -146,7 +147,7 @@ impl<'a> GameController<'a> {
             }
         };
 
-        let game_state = GameState::join_new_world(size.width as f32 / size.height as f32, 70., &device, &game_bindgroups.camera_layout, &game_bindgroups.texture_bin, &model_bin);
+        let game_state = GameState::MainMenu(String::new());//GameState::join_new_world(size.width as f32 / size.height as f32, 70., &device, &game_bindgroups.camera_layout, &game_bindgroups.texture_bin, &model_bin);
 
         let egui_ctx = egui::Context::default();
 
@@ -164,6 +165,8 @@ impl<'a> GameController<'a> {
             surface_format,
             RendererOptions::default()
         );
+
+        load_fonts(&egui_ctx);
 
         Self {
             egui_ctx,
@@ -189,7 +192,12 @@ impl<'a> GameController<'a> {
 
     pub fn draw_interface(&mut self, raw_input: RawInput) -> FullOutput {
         let full_output = self.egui_ctx.run_ui(raw_input, |ctx| {
-            main_screen(ctx, (self.window_size.width, self.window_size.height));
+            match &mut self.game_state {
+                GameState::MainMenu(server_ip) => {
+                    main_screen(ctx, (self.window_size.width, self.window_size.height), server_ip);
+                },
+                _ => {}
+            }
         });
 
         full_output
@@ -262,7 +270,7 @@ impl<'a> GameController<'a> {
                     view: &view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load, // don't clear, composite on top
+                        load: wgpu::LoadOp::Load,
                         store: wgpu::StoreOp::Store,
                     },
                     depth_slice: None
