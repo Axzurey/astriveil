@@ -1,3 +1,4 @@
+use instant::Instant;
 use nalgebra::Vector2;
 use wgpu::RenderPass;
 use winit::event::{ElementState, KeyEvent, MouseButton};
@@ -5,8 +6,48 @@ use getset::{Getters, MutGetters, Setters, WithSetters};
 use crate::plantain::{elements::screen::UiLayer, render_queue::PipelineRefs, vertices::ui_vertex::UiVertex};
 use std::any::Any;
 
+pub struct Timer {
+    //duration in ms
+    duration: f64,
+    last_tick: f64
+}
+
+impl Timer {
+    pub fn new(duration_millis: f64, from_now: bool) -> Self {
+        Self {
+            duration: duration_millis,
+            last_tick: if from_now {instant::now()} else {0.}
+        }
+    }
+    /*Tells you whether or not the period has elapsed. */
+    pub fn check(&mut self) -> bool {
+        let now = instant::now();
+        let diff = now - self.last_tick;
+
+        if diff > self.duration {
+            self.last_tick = now;
+            true
+        }
+        else {
+            false
+        }
+    }
+}
+
+pub enum AlignModeX {
+    Center,
+    Right,
+    Left
+}
+
+pub enum AlignModeY {
+    Center,
+    Top,
+    Bottom
+}
+
 pub trait UiElement {
-    fn draw(&self, device: &wgpu::Device, queue: &wgpu::Queue, render_pass: &mut RenderPass, pipeline_refs: &mut PipelineRefs, is_focused: bool);
+    fn draw(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, render_pass: &mut RenderPass, pipeline_refs: &mut PipelineRefs, is_focused: bool);
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
     
@@ -127,20 +168,51 @@ impl Default for Border {
     }
 }
 
-pub fn is_point_in_rect(point: [f32; 2], center: [f32; 2], size: [f32; 2], rotation: f32) -> bool {
+pub fn is_point_in_circle(point: &[f32; 2], origin: [f32; 2], radius: f32) -> bool {
+    ((point[0] - origin[0]).powf(2.0) + (point[1] - origin[1]).powf(2.0)).sqrt() < radius
+}
+
+pub fn is_point_in_rect(point: &[f32; 2], center: &[f32; 2], size: &[f32; 2], rotation: f32, corners: &[f32; 4]) -> bool {
+    // corners order: top-left, top-right, bottom-right, bottom-left
+
     let dx = point[0] - center[0];
     let dy = point[1] - center[1];
-
     let radians = rotation.to_radians();
-
     let cos = radians.cos();
     let sin = radians.sin();
-
     let rx = dx * cos + dy * sin;
     let ry = -dx * sin + dy * cos;
-
     let hw = size[0] / 2.0;
     let hh = size[1] / 2.0;
 
-    (-hw <= rx && rx <= hw) && (-hh <= ry && ry <= hh)
+    //bounding check
+    if rx < -hw || rx > hw || ry < -hh || ry > hh {
+        return false;
+    }
+
+    //watch me start crying
+
+    if rx < 0.0 && ry < 0.0 {
+        // top left
+        if rx < -hw + corners[0] && ry < -hh + corners[0] {
+            return is_point_in_circle(&[rx, ry], [-hw + corners[0], -hh + corners[0]], corners[0]);
+        }
+    } else if rx >= 0.0 && ry < 0.0 {
+        // top right
+        if rx > hw - corners[1] && ry < -hh + corners[1] {
+            return is_point_in_circle(&[rx, ry], [hw - corners[1], -hh + corners[1]], corners[1]);
+        }
+    } else if rx >= 0.0 && ry >= 0.0 {
+        // bottom right
+        if rx > hw - corners[2] && ry > hh - corners[2] {
+            return is_point_in_circle(&[rx, ry], [hw - corners[2], hh - corners[2]], corners[2]);
+        }
+    } else {
+        // bottom left
+        if rx < -hw + corners[3] && ry > hh - corners[3] {
+            return is_point_in_circle(&[rx, ry], [-hw + corners[3], hh - corners[3]], corners[3]);
+        }
+    }
+
+    true
 }

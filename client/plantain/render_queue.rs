@@ -57,7 +57,7 @@ impl UiRenderQueue {
         output_texture: &mut wgpu::SurfaceTexture,
         output_view: &wgpu::TextureView,
         encoder: &mut wgpu::CommandEncoder,
-        screen: &Screen,
+        screen: &mut Screen,
         bindgroups: &GameBindgroups,
         mouse_pos: &Vector2<f32>
     ) {
@@ -92,7 +92,7 @@ impl UiRenderQueue {
             atlas: &mut self.atlas,
             text_renderer: &mut self.text_renderer,
             swash_cache: &mut self.swash_cache,
-            screen_dims: [output_texture.texture.width() as f32, output_texture.texture.height() as f32],
+            screen_dims: [screen.width as f32, screen.height as f32],
             mouse_pos: mouse_pos.clone()
         };
 

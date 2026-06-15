@@ -1,9 +1,9 @@
-use glyphon::{Color, Cursor, Metrics, TextArea, TextBounds};
+use glyphon::{Color, Cursor, Metrics, TextArea, TextBounds, cosmic_text::Scroll};
 use nalgebra::Vector2;
 use wgpu::{RenderPass, util::DeviceExt};
 use winit::{event::{ElementState, MouseButton}, keyboard::{Key, NamedKey}};
 use getset::{Getters, MutGetters, Setters, WithSetters};
-use crate::plantain::{elements::{element::{Border, ElementDesc, ElementDims, InputElement, UiElement, is_point_in_rect}, screen::UiLayer}, render_queue::PipelineRefs, vertices::ui_vertex::UiVertex};
+use crate::plantain::{elements::{element::{AlignModeX, AlignModeY, Border, ElementDesc, ElementDims, InputElement, Timer, UiElement, is_point_in_rect}, screen::UiLayer}, render_queue::PipelineRefs, vertices::ui_vertex::UiVertex};
 
 #[derive(Getters, Setters, WithSetters, MutGetters)]
 pub struct TextBox {
@@ -12,9 +12,20 @@ pub struct TextBox {
     cursor: usize,
     #[getset(get = "pub", set = "pub", get_mut = "pub")]
     max_text_length: usize,
+    #[getset(get = "pub", set = "pub", get_mut = "pub")]
+    text_size: f32,
+    #[getset(get = "pub", set = "pub", get_mut = "pub")]
+    line_height: f32,
     pub border: Border,
     pub desc: ElementDesc,
-    pub dims: ElementDims
+    pub dims: ElementDims,
+
+    blink_on: bool,
+    blink_timer: Timer,
+    #[getset(get = "pub", set = "pub", get_mut = "pub")]
+    text_align_x: AlignModeX,
+    #[getset(get = "pub", set = "pub", get_mut = "pub")]
+    text_algin_y: AlignModeY
 }
 
 impl TextBox {
@@ -26,6 +37,12 @@ impl TextBox {
             text: text.to_owned(),
             cursor: text.len(),
             max_text_length: usize::MAX,
+            text_size: 12.,
+            line_height: 14.,
+            blink_on: false,
+            blink_timer: Timer::new(500., true),
+            text_algin_y: AlignModeY::Center,
+            text_align_x: AlignModeX::Center
         })
     }
 }
@@ -80,10 +97,14 @@ impl InputElement for TextBox {
         let abs_pos = self.dims.position().calculate_absolute(screen_dims);
         let abs_size = self.dims.size().calculate_absolute(screen_dims);
 
+        println!("Size: {:?}", abs_size);
+
+        let expanded_size = [abs_size[0] + self.border.thickness() * 2.0, abs_size[1] + self.border.thickness() * 2.0];
+
         let center = [abs_pos[0] + abs_size[0] / 2.0, abs_pos[1] + abs_size[1] / 2.0];
         
-        let inside = is_point_in_rect([mouse_pos.x, mouse_pos.y], center, abs_size, *self.dims.rotation());
-        
+        let inside = is_point_in_rect(&[mouse_pos.x, mouse_pos.y], &center, &expanded_size, *self.dims.rotation(), self.border.corner_radius());
+
         if inside && *button == MouseButton::Left && state.is_pressed() {
             println!("INSIDE!");
             super::element::EventProcessResult::Focus
@@ -106,7 +127,7 @@ impl UiElement for TextBox {
     fn as_input_element_mut(&mut self) -> Option<&mut dyn InputElement> {
         Some(self)
     }
-    fn draw(&self, device: &wgpu::Device, queue: &wgpu::Queue, render_pass: &mut RenderPass, pipeline_refs: &mut PipelineRefs, is_focused: bool) {
+    fn draw(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, render_pass: &mut RenderPass, pipeline_refs: &mut PipelineRefs, is_focused: bool) {
     
         let abs_pos = self.dims.position().calculate_absolute(pipeline_refs.screen_dims);
         let abs_size = self.dims.size().calculate_absolute(pipeline_refs.screen_dims);
@@ -135,10 +156,14 @@ impl UiElement for TextBox {
             usage: wgpu::BufferUsages::INDEX
         });
 
-        let mut text_buffer = glyphon::Buffer::new(pipeline_refs.font_system, Metrics::new(42.0, 42.0));
+        let mut text_buffer = glyphon::Buffer::new(pipeline_refs.font_system, Metrics::new(self.text_size, self.line_height));
         text_buffer.set_size(pipeline_refs.font_system, Some(abs_size[0]), Some(abs_size[1]));
         text_buffer.set_text(pipeline_refs.font_system, &self.text, &glyphon::Attrs::new().family(glyphon::Family::SansSerif), glyphon::Shaping::Advanced, None);
+        text_buffer.set_scroll(Scroll::new(0, 0., self.cursor as f32));
         
+        text_buffer.set_wrap(pipeline_refs.font_system, glyphon::Wrap::None);
+        //use for getting cursor. Maybe save the text_buffer interally, instead of recreating it each time? text_buffer.hit(x, y)
+        //TODO: ALIGNMENT
         let text_col = self.desc.color().map(|v| (v * 255.0) as u8);
 
         let text_area = TextArea {
@@ -164,32 +189,57 @@ impl UiElement for TextBox {
         render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
 
         render_pass.draw_indexed(0..index_length as u32, 0, 0..1);
+        
+        if self.blink_timer.check() {
+            self.blink_on = !self.blink_on;
+        }
+        if is_focused && self.blink_on {
+            let (cx, cy, cyb) = if self.text.is_empty() {
+                //create a buffer with dummy text, to get the actual size of the text
+                let mut text_buffer = glyphon::Buffer::new(pipeline_refs.font_system, Metrics::new(42.0, 42.0));
+                text_buffer.set_size(pipeline_refs.font_system, Some(abs_size[0]), Some(abs_size[1]));
+                text_buffer.set_text(pipeline_refs.font_system, "p", &glyphon::Attrs::new().family(glyphon::Family::SansSerif), glyphon::Shaping::Advanced, None);
+                text_buffer
+                    .layout_runs()
+                    .find_map(|run| {
+                        run.glyphs.iter().nth(self.cursor).map(|g| (g.x, run.line_top, run.line_y.max(self.line_height)))
+                    })
+                    .unwrap_or_else(|| {
+                        text_buffer
+                            .layout_runs()
+                            .last()
+                            .map(|run| {
+                                let last_glyph = run.glyphs.last();
+                                let x = last_glyph.map(|g| g.x + g.w).unwrap_or(0.0);
+                                (x, run.line_top, run.line_y.max(self.line_height))
+                            })
+                            .unwrap_or((0.0, 0.0, 0.0))
+                    })
+            } 
+            else {
+                text_buffer
+                    .layout_runs()
+                    .find_map(|run| {
+                        run.glyphs.iter().nth(self.cursor).map(|g| (g.x, run.line_top, run.line_y.max(self.line_height)))
+                    })
+                    .unwrap_or_else(|| {
+                        text_buffer
+                            .layout_runs()
+                            .last()
+                            .map(|run| {
+                                let last_glyph = run.glyphs.last();
+                                let x = last_glyph.map(|g| g.x + g.w).unwrap_or(0.0);
+                                (x, run.line_top, run.line_y.max(self.line_height))
+                            })
+                            .unwrap_or((0.0, 0.0, 0.0))
+                    })
+            };
 
-        if is_focused {
-            let (cx, cy) = text_buffer
-                .layout_runs()
-                .find_map(|run| {
-                    run.glyphs.iter().nth(self.cursor).map(|g| (g.x, run.line_y - run.line_height))
-                })
-                .unwrap_or_else(|| {
-                    text_buffer
-                        .layout_runs()
-                        .last()
-                        .map(|run| {
-                            let last_glyph = run.glyphs.last();
-                            let x = last_glyph.map(|g| g.x + g.w).unwrap_or(0.0);
-                            (x, run.line_y - run.line_height)
-                        })
-                        .unwrap_or((0.0, 0.0))
-                });
-
-            let h = text_buffer.metrics().line_height;
-
-            let position = [abs_pos[0] + cx, abs_pos[1] + cy];
+            let position = [abs_pos[0] + cx, abs_pos[1] + cy + self.border.thickness()];
 
             let cursor_thickness = 3.0;
 
-            let size = [cursor_thickness, h];
+            let size = [cursor_thickness, cyb - cy];
 
             let (vertices, indices) = UiVertex::create_rect(
                 &position,

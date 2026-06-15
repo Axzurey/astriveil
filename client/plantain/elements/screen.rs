@@ -24,7 +24,7 @@ fn ortho(width: f32, height: f32) -> [[f32; 4]; 4] {
     ]
 }
 
-#[derive(Hash, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(Hash, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Copy)]
 pub enum UiLayer {
     Background,
     Menu,
@@ -34,8 +34,8 @@ pub enum UiLayer {
 
 pub struct Screen {
     children: Slab<Box<dyn UiElement>>,
-    width: u32,
-    height: u32,
+    pub width: u32,
+    pub height: u32,
     pub cam_buffer: wgpu::Buffer,
     pub cam_bg: wgpu::BindGroup,
     pub cam_bgl: wgpu::BindGroupLayout,
@@ -197,10 +197,10 @@ impl Screen {
         false
     }
 
-    pub fn draw_to_buffers(&self, device: &wgpu::Device, queue: &wgpu::Queue, render_pass: &mut RenderPass, pipeline_refs: &mut PipelineRefs) {
-        let groups = self.children.iter().into_group_map_by(|v| v.1.get_layer());
-        for (layer, elements) in groups.iter().sorted_by(|a, b| a.0.cmp(b.0)) {
-            let e = elements.iter()
+    pub fn draw_to_buffers(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, render_pass: &mut RenderPass, pipeline_refs: &mut PipelineRefs) {
+        let mut groups = self.children.iter_mut().into_group_map_by(|v| *v.1.get_layer());
+        for (layer, elements) in groups.iter_mut().sorted_by(|a, b| a.0.cmp(b.0)) {
+            let e = elements.iter_mut()
                 .sorted_by(|a, b| a.1.get_zindex().cmp(&b.1.get_zindex()));
             for (id, element) in e {
                 let is_focused = if let Some(target) = self.focused_element {

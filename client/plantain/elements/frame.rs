@@ -40,7 +40,7 @@ impl UiElement for Frame {
     fn as_input_element_mut(&mut self) -> Option<&mut dyn InputElement> {
         None
     }
-    fn draw(&self, device: &wgpu::Device, queue: &wgpu::Queue, render_pass: &mut RenderPass, pipeline_refs: &mut PipelineRefs, is_focused: bool) {
+    fn draw(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, render_pass: &mut RenderPass, pipeline_refs: &mut PipelineRefs, is_focused: bool) {
         // let (vertices, indices) = UiVertex::create_rect(&self.position, &(self.position + self.size), &self.color, &[1., 1., 1., 1.], self.rotation, &[12., 12., 12., 12.]);
 
         // let index_length = indices.len();

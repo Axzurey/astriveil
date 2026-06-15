@@ -26,6 +26,7 @@ impl UiVertex {
         corner_radius: &[f32; 4],
         border_thickness: f32
     ) -> (Vec<UiVertex>, Vec<u32>) {
+        let expanded_size = [size[0] + border_thickness * 2.0, size[1] + border_thickness * 2.0];
         let center = [position[0] + size[0] / 2.0, position[1] + size[1] / 2.0];
         (
             vec![
@@ -36,7 +37,7 @@ impl UiVertex {
                     border_color: border_color.clone(),
                     rotation: rotation.to_radians(),
                     corner_radius: corner_radius.clone(),
-                    size: size.clone(),
+                    size: expanded_size.clone(),
                     center: center.clone(),
                     border_thickness
                 },
@@ -47,7 +48,7 @@ impl UiVertex {
                     border_color: border_color.clone(),
                     rotation: rotation.to_radians(),
                     corner_radius: corner_radius.clone(),
-                    size: size.clone(),
+                    size: expanded_size.clone(),
                     center: center.clone(),
                     border_thickness
                 },
@@ -58,7 +59,7 @@ impl UiVertex {
                     border_color: border_color.clone(),
                     rotation: rotation.to_radians(),
                     corner_radius: corner_radius.clone(),
-                    size: size.clone(),
+                    size: expanded_size.clone(),
                     center: center.clone(),
                     border_thickness
                 },
@@ -69,7 +70,7 @@ impl UiVertex {
                     border_color: border_color.clone(),
                     rotation: rotation.to_radians(),
                     corner_radius: corner_radius.clone(),
-                    size: size.clone(),
+                    size: expanded_size.clone(),
                     center: center.clone(),
                     border_thickness
                 }

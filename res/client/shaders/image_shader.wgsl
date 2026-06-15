@@ -53,9 +53,10 @@ struct Camera {
 @group(1) @binding(0)
 var<uniform> camera: Camera;
 
+//top left, top right, bottom right, bottom left
 fn rounded(position: vec2<f32>, half_size: vec2<f32>, corners: vec4<f32>) -> f32 {
-    var q_r: vec2<f32> = select(corners.zw, corners.xy, position.x > 0.0);
-    var rad: f32 = select(q_r.y, q_r.x, position.y > 0.0);
+    var q_r: vec2<f32> = select(corners.xy, corners.zw, position.y > 0.0);
+    var rad: f32 = select(q_r.y, q_r.x, position.x > 0.0);
 
     let q = abs(position) - half_size + rad;
     return min(max(q.x, q.y), 0.0) + length(max(q, vec2<f32>(0.0))) - rad;

@@ -5,7 +5,7 @@ use shared::{loaders::{model_bin::ModelBin, texture_bin::TextureBin}, world::ent
 use wgpu::{BackendOptions, CurrentSurfaceTexture, MemoryBudgetThresholds, TextureFormat};
 use winit::{dpi::PhysicalSize, event::{ElementState, KeyEvent, MouseButton}, keyboard::PhysicalKey};
 
-use crate::{gameloop::{entitybin::EntityBin, world::World}, nominal::camera::Camera, plantain::{elements::{element::UiElement, frame::Frame, image_frame::ImageFrame, screen::{Screen, UiLayer}, textbox::TextBox, textlabel::TextLabel}, render_queue::UiRenderQueue}, renderer::renderer::Renderer};
+use crate::{gameloop::{entitybin::EntityBin, world::World}, nominal::camera::Camera, plantain::{elements::{element::{DimD2, UiElement}, frame::Frame, image_frame::ImageFrame, screen::{Screen, UiLayer}, textbox::TextBox, textlabel::TextLabel}, render_queue::UiRenderQueue}, renderer::renderer::Renderer};
 
 struct WorldState {
     pub world: World,
@@ -153,6 +153,13 @@ impl<'a> GameController<'a> {
         //ui_screen.add_child(ImageFrame::new());
         let mut label = TextBox::new("hmmm");
         label.set_layer(UiLayer::Menu);
+        label.border.set_corner_radius([5., 5., 5., 5.]);
+        label.border.set_color([1., 1., 1., 1.]);
+        label.border.set_thickness(2.);
+        label.dims.set_position(DimD2::from_scale(0.5, 0.5));
+        label.dims.set_size(DimD2::from_offset(320., 54.));
+        label.set_text_size(42.);
+        label.set_line_height(42.);
 
         ui_screen.add_child(label);
 
@@ -221,7 +228,7 @@ impl<'a> GameController<'a> {
             _ => {}
         }
 
-        self.ui_renderqueue.render(&self.device, &self.queue, &mut output, &mut view, &mut encoder, &self.ui_screen, &self.game_bindgroups, &self.mouse_position);
+        self.ui_renderqueue.render(&self.device, &self.queue, &mut output, &mut view, &mut encoder, &mut self.ui_screen, &self.game_bindgroups, &self.mouse_position);
 
         self.queue.submit([encoder.finish()]);
         output.present();
@@ -263,7 +270,6 @@ impl<'a> GameController<'a> {
         }
     }
     pub fn on_window_mouse_event(&mut self, button: MouseButton, state: ElementState) {
-        println!("{:?} {:?}", button, state);
         if self.ui_screen.mouse_event(&button, &state, &self.mouse_position) { //event consumed by ui
             return;
         }
