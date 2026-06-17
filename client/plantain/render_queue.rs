@@ -8,7 +8,7 @@ pub struct UiRenderQueue {
     color_pipeline: RenderPipeline,
     image_pipeline: RenderPipeline,
     cache: Cache,
-    font_system: FontSystem,
+    pub font_system: FontSystem,
     viewport: Viewport,
     pub atlas: TextAtlas,
     text_renderer: TextRenderer,

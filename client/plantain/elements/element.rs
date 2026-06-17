@@ -1,3 +1,4 @@
+use glyphon::FontSystem;
 use instant::Instant;
 use nalgebra::Vector2;
 use wgpu::RenderPass;
@@ -69,7 +70,7 @@ pub enum EventProcessResult {
 }
 
 pub trait InputElement: UiElement {
-    fn key_event(&mut self, event: &KeyEvent, is_focused: bool) -> EventProcessResult;
+    fn key_event(&mut self, event: &KeyEvent, is_focused: bool, font_system: &mut FontSystem) -> EventProcessResult;
     fn mouse_event(&mut self, button: &MouseButton, state: &ElementState, is_focused: bool, screen_dims: [f32; 2], mouse_pos: &Vector2<f32>) -> EventProcessResult;
 }
 

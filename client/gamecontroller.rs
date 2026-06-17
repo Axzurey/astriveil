@@ -147,11 +147,11 @@ impl<'a> GameController<'a> {
 
         let mut ui_screen = Screen::new(&device, size.width, size.height);
 
-        let ui_renderqueue = UiRenderQueue::new(&device, &queue, vec![Some(&game_bindgroups.texture_bin.block_texture_bindgroup_layout), Some(&ui_screen.cam_bgl)], surface_format);
+        let mut ui_renderqueue = UiRenderQueue::new(&device, &queue, vec![Some(&game_bindgroups.texture_bin.block_texture_bindgroup_layout), Some(&ui_screen.cam_bgl)], surface_format);
 
         //ui_screen.add_child(Frame::new());
         //ui_screen.add_child(ImageFrame::new());
-        let mut label = TextBox::new("hmmm");
+        let mut label = TextBox::new(&mut ui_renderqueue.font_system);
         label.set_layer(UiLayer::Menu);
         label.border.set_corner_radius([5., 5., 5., 5.]);
         label.border.set_color([1., 1., 1., 1.]);

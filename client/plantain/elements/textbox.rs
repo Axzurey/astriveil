@@ -1,4 +1,4 @@
-use glyphon::{Color, Cursor, Metrics, TextArea, TextBounds, cosmic_text::Scroll};
+use glyphon::{Color, Cursor, FontSystem, Metrics, TextArea, TextBounds, cosmic_text::{Motion, Scroll}};
 use nalgebra::Vector2;
 use wgpu::{RenderPass, util::DeviceExt};
 use winit::{event::{ElementState, MouseButton}, keyboard::{Key, NamedKey}};
@@ -9,7 +9,6 @@ use crate::plantain::{elements::{element::{AlignModeX, AlignModeY, Border, Eleme
 pub struct TextBox {
     #[getset(get = "pub")]
     text: String,
-    cursor: usize,
     #[getset(get = "pub", set = "pub", get_mut = "pub")]
     max_text_length: usize,
     #[getset(get = "pub", set = "pub", get_mut = "pub")]
@@ -25,37 +24,47 @@ pub struct TextBox {
     #[getset(get = "pub", set = "pub", get_mut = "pub")]
     text_align_x: AlignModeX,
     #[getset(get = "pub", set = "pub", get_mut = "pub")]
-    text_algin_y: AlignModeY
+    text_algin_y: AlignModeY,
+
+    buffer: glyphon::Buffer,
+    cursor: glyphon::Cursor
 }
 
 impl TextBox {
-    pub fn new(text: &str) -> Box<Self> {
+    pub fn new(font_system: &mut FontSystem) -> Box<Self> {
+        let buffer = glyphon::Buffer::new(font_system, Metrics::new(12., 14.));
+        
         Box::new(Self {
             desc: ElementDesc::default(),
             dims: ElementDims::default(),
             border: Border::default(),
-            text: text.to_owned(),
-            cursor: text.len(),
+            text: String::new(),
+            cursor: glyphon::Cursor::new(0, 0),
             max_text_length: usize::MAX,
             text_size: 12.,
             line_height: 14.,
             blink_on: false,
             blink_timer: Timer::new(500., true),
             text_algin_y: AlignModeY::Center,
-            text_align_x: AlignModeX::Center
+            text_align_x: AlignModeX::Center,
+            buffer
         })
     }
 }
 
 impl InputElement for TextBox {
-    fn key_event(&mut self, event: &winit::event::KeyEvent, is_focused: bool) -> super::element::EventProcessResult {
+    fn key_event(&mut self, event: &winit::event::KeyEvent, is_focused: bool, font_system: &mut FontSystem) -> super::element::EventProcessResult {
         if is_focused && event.state == ElementState::Pressed {
             match event.logical_key {
                 Key::Named(NamedKey::Backspace) => {
-                    if self.cursor > 0 {
-                        self.cursor -= 1;
-                        self.text.remove(self.cursor);
-                    }
+                    let line = self.buffer.lines.get_mut(self.cursor.line).unwrap();
+                    let index = line
+                    self.buffer.re
+
+                    let res = self.buffer.cursor_motion(font_system, self.cursor, None, Motion::Previous);
+
+                    
+
                     return super::element::EventProcessResult::Sink;
                 },
                 Key::Named(NamedKey::ArrowLeft) => {
