@@ -35,18 +35,6 @@ impl Timer {
     }
 }
 
-pub enum AlignModeX {
-    Center,
-    Right,
-    Left
-}
-
-pub enum AlignModeY {
-    Center,
-    Top,
-    Bottom
-}
-
 pub trait UiElement {
     fn draw(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, render_pass: &mut RenderPass, pipeline_refs: &mut PipelineRefs, is_focused: bool);
     fn as_any(&self) -> &dyn Any;

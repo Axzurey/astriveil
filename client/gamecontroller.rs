@@ -256,7 +256,7 @@ impl<'a> GameController<'a> {
     }
 
     pub fn on_window_key_press(&mut self, event: KeyEvent) {
-        if self.ui_screen.key_event(&event) { //event consumed by ui
+        if self.ui_screen.key_event(&event, &mut self.ui_renderqueue.font_system) { //event consumed by ui
             return;
         }
         match &mut self.game_state {

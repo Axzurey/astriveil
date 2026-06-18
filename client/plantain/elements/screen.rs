@@ -1,5 +1,6 @@
 use std::iter::FilterMap;
 
+use glyphon::FontSystem;
 use itertools::Itertools;
 use nalgebra::Vector2;
 use slab::Slab;
@@ -128,7 +129,7 @@ impl Screen {
         self.children.iter_mut().filter_map(|e| e.1.as_any_mut().downcast_mut::<T>())
     }
 
-    pub fn key_event(&mut self, event: &KeyEvent) -> bool {
+    pub fn key_event(&mut self, event: &KeyEvent, font_system: &mut FontSystem) -> bool {
         let mut groups = self.children.iter_mut().into_group_map_by(|v| v.1.get_layer().clone());
         for (layer, elements) in groups.iter_mut().sorted_by(|a, b| a.0.cmp(b.0)) {
             let iter = elements.iter_mut()
@@ -140,7 +141,7 @@ impl Screen {
                 let is_focused = if let Some(target) = self.focused_element {
                     target == id
                 } else {false};
-                let res = item.key_event(&event, is_focused);
+                let res = item.key_event(&event, is_focused, font_system);
                 match res {
                     EventProcessResult::Nothing => {},
                     EventProcessResult::Sink => {
