@@ -1,4 +1,4 @@
-use glyphon::FontSystem;
+use glyphon::{Color, FontSystem};
 use instant::Instant;
 use nalgebra::Vector2;
 use wgpu::RenderPass;
@@ -135,6 +135,10 @@ impl Default for ElementDesc {
             background_color: [0.1, 0.5, 0.1, 1.0]
         }
     }
+}
+
+pub fn convert_01_to_color(n: &[f32; 4]) -> Color {
+    Color::rgba((n[0] * 255.0) as u8, (n[1] * 255.0) as u8, (n[2] * 255.0) as u8, (n[3] * 255.0) as u8)
 }
 
 #[derive(Getters, Setters, WithSetters, MutGetters)]
