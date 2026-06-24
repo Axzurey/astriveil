@@ -157,7 +157,7 @@ impl<'a> GameController<'a> {
         label.border.set_color([1., 1., 1., 1.]);
         label.border.set_thickness(2.);
         label.dims.set_position(DimD2::from_scale(0.5, 0.5));
-        label.dims.set_size(DimD2::from_offset(320., 154.));
+        label.dims.set_size(DimD2::from_offset(320., 54.));
         label.set_text_size(42.);
         label.set_line_height(42.);
         label.set_text_align_x(glyphon::cosmic_text::Align::Left);

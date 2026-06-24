@@ -24,12 +24,14 @@ pub struct TextBox {
     #[getset(get = "pub", set = "pub", get_mut = "pub")]
     text_align_y: Align,
     //if only i knew about editor earlier. it would've saved me hours upon hours of pain
-    pub editor: Editor<'static>
+    editor: Editor<'static>,
+    multiline: bool
 }
 
 impl TextBox {
     pub fn new(font_system: &mut FontSystem) -> Box<Self> {
-        let buffer = glyphon::Buffer::new(font_system, Metrics::new(12., 14.));
+        let mut buffer = glyphon::Buffer::new(font_system, Metrics::new(12., 14.));
+        buffer.set_wrap(font_system, glyphon::Wrap::None);
         Box::new(Self {
             desc: ElementDesc::default(),
             dims: ElementDims::default(),
@@ -41,7 +43,8 @@ impl TextBox {
             blink_timer: Timer::new(500., true),
             text_align_y: Align::Center,
             text_align_x: Align::Left,
-            editor: Editor::new(buffer)
+            editor: Editor::new(buffer),
+            multiline: false
         })
     }
 
@@ -59,6 +62,30 @@ impl TextBox {
             usage: wgpu::BufferUsages::INDEX
         });
         (vertex_buffer, index_buffer, index_length)
+    }
+
+    fn get_cursor_offset_for_singleline(&self, abs_size: [f32; 2]) -> f32 {
+        let (cx, cy, ch) = self.get_cursor_info();
+        let buff = match self.editor.buffer_ref() {
+            BufferRef::Arc(_) => unreachable!(), //it is not.
+            BufferRef::Borrowed(_) => unreachable!(), //it is not.
+            BufferRef::Owned(u) => u 
+        }; //make sure it doesn't slide the window when the buffer scroll isn't changing
+        
+        if cx > abs_size[0] - 4.0 {
+            abs_size[0] - cx - 4.0
+        }
+        else {
+            0.0
+        }
+    }
+
+    //x-offset, y-offset, y-size
+    fn get_cursor_info(&self) -> (f32, f32, f32) {
+        let (cursorx, cursory) = self.editor.cursor_position().unwrap_or((0, 0));
+        let height = self.text_size;
+
+        (cursorx as f32, cursory as f32, height)
     }
 
     // set buffers and draw a rect
@@ -152,20 +179,22 @@ impl UiElement for TextBox {
             _ => (abs_pos, [abs_pos[0] + abs_size[0], abs_pos[1] + abs_size[1]])
         };
 
+        let offset_x = self.get_cursor_offset_for_singleline(abs_size);
+
         let text_col = self.desc.color().map(|v| (v * 255.0) as u8);
         self.editor.shape_as_needed(pipeline_refs.font_system, false);
         let buff = match self.editor.buffer_ref_mut() {
             BufferRef::Arc(_) => unreachable!(), //it is not.
-            BufferRef::Borrowed(_) => unreachable!(),
+            BufferRef::Borrowed(_) => unreachable!(), //it is not.
             BufferRef::Owned(u) => u 
         };
-
+        buff.set_wrap(pipeline_refs.font_system, if self.multiline {glyphon::Wrap::WordOrGlyph} else {glyphon::Wrap::None});
         buff.set_size(pipeline_refs.font_system, Some(abs_size[0]), Some(abs_size[1]));
         buff.set_metrics(pipeline_refs.font_system, Metrics::new(self.text_size, self.line_height));
 
         let text_area = TextArea {
             buffer: buff,
-            left: text_start[0],
+            left: text_start[0] + if self.multiline {0.0} else {offset_x},
             top: text_start[1],
             scale: 1.,
             bounds: TextBounds {
@@ -188,23 +217,23 @@ impl UiElement for TextBox {
             self.blink_on = !self.blink_on;
         }
 
-        // if is_focused && self.blink_on {
-        //     let (cx, cy, cyb) = self.get_cursor_pos(pipeline_refs.font_system, abs_size);
+        if is_focused && self.blink_on {
+            let (cx, cy, csize) = self.get_cursor_info();
 
-        //     // offset cursor x by scroll_offset to match scrolled text
-        //     let position = [
-        //         abs_pos[0] + cx, 
-        //         abs_pos[1] + cy + self.border.thickness()
-        //     ];
-        //     let size = [3.0, cyb - cy];
+            // offset cursor x by scroll_offset to match scrolled text
+            let position = [
+                abs_pos[0] + cx + if self.multiline {0.0} else {offset_x}, 
+                abs_pos[1] + cy + self.border.thickness()
+            ];
+            let size = [3.0, csize];
 
-        //     let (vb, ib, il) = Self::create_gpu_rect(
-        //         device, &position, &size,
-        //         &[1., 1., 1., 1.], &[1., 1., 1., 1.],
-        //         0., &[0., 0., 0., 0.], 0.
-        //     );
-        //     Self::draw_rect(render_pass, &vb, &ib, il);
-        // }
+            let (vb, ib, il) = Self::create_gpu_rect(
+                device, &position, &size,
+                &[1., 1., 1., 1.], &[1., 1., 1., 1.],
+                0., &[0., 0., 0., 0.], 0.
+            );
+            Self::draw_rect(render_pass, &vb, &ib, il);
+        }
     }
 
     fn as_any(&self) -> &dyn std::any::Any { self }
