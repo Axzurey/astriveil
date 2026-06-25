@@ -66,11 +66,6 @@ impl TextBox {
 
     fn get_cursor_offset_for_singleline(&self, abs_size: [f32; 2]) -> f32 {
         let (cx, cy, ch) = self.get_cursor_info();
-        let buff = match self.editor.buffer_ref() {
-            BufferRef::Arc(_) => unreachable!(), //it is not.
-            BufferRef::Borrowed(_) => unreachable!(), //it is not.
-            BufferRef::Owned(u) => u 
-        }; //make sure it doesn't slide the window when the buffer scroll isn't changing
         
         if cx > abs_size[0] - 4.0 {
             abs_size[0] - cx - 4.0
