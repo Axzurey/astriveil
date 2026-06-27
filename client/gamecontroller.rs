@@ -163,7 +163,13 @@ impl<'a> GameController<'a> {
         label.set_text_align_x(glyphon::cosmic_text::Align::Left);
         label.set_text_align_y(glyphon::cosmic_text::Align::Left);
 
+        let mut text = TextLabel::new(&mut ui_renderqueue.font_system);
+        text.set_text("This is text...");
+        text.set_text_size(52.0);
+        text.dims.set_size(DimD2::from_offset(300., 95.));
+
         ui_screen.add_child(label);
+        ui_screen.add_child(text);
 
         Self {
             game_state,
