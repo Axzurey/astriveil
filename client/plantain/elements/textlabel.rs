@@ -85,13 +85,13 @@ impl InputElement for TextLabel {
 
 
     fn mouse_event(&mut self, button: &winit::event::MouseButton, state: &winit::event::ElementState, is_focused: bool, screen_dims: [f32; 2], mouse_pos: &Vector2<f32>) -> super::element::EventProcessResult {
-        let abs_pos = self.dims.position().calculate_absolute(screen_dims);
-        let abs_size = self.dims.size().calculate_absolute(screen_dims);
+        let abs_pos = self.dims.position.get().calculate_absolute(screen_dims);
+        let abs_size = self.dims.size.get().calculate_absolute(screen_dims);
 
-        let expanded_size = [abs_size[0] + self.border.thickness() * 2.0, abs_size[1] + self.border.thickness() * 2.0];
+        let expanded_size = [abs_size[0] + self.border.thickness.get() * 2.0, abs_size[1] + self.border.thickness.get() * 2.0];
         let center = [abs_pos[0] + abs_size[0] / 2.0, abs_pos[1] + abs_size[1] / 2.0];
 
-        let inside = is_point_in_rect(&[mouse_pos.x, mouse_pos.y], &center, &expanded_size, *self.dims.rotation(), self.border.corner_radius());
+        let inside = is_point_in_rect(&[mouse_pos.x, mouse_pos.y], &center, &expanded_size, *self.dims.rotation.get(), self.border.corner_radius.get());
 
         if inside && *button == MouseButton::Left && state.is_pressed() {
             super::element::EventProcessResult::Focus
@@ -112,14 +112,14 @@ impl UiElement for TextLabel {
     }
 
     fn draw(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, render_pass: &mut RenderPass, pipeline_refs: &mut PipelineRefs, is_focused: bool) {
-        let abs_pos = self.dims.position().calculate_absolute(pipeline_refs.screen_dims);
-        let abs_size = self.dims.size().calculate_absolute(pipeline_refs.screen_dims);
+        let abs_pos = self.dims.position.get().calculate_absolute(pipeline_refs.screen_dims);
+        let abs_size = self.dims.size.get().calculate_absolute(pipeline_refs.screen_dims);
 
         // draw background rect
         let (vb, ib, il) = Self::create_gpu_rect(
             device, &abs_pos, &abs_size,
-            &self.desc.background_color(), &self.border.color(),
-            *self.dims.rotation(), &self.border.corner_radius(), *self.border.thickness()
+            &self.desc.background_color.get(), &self.border.color.get(),
+            *self.dims.rotation.get(), &self.border.corner_radius.get(), *self.border.thickness.get()
         );
 
         let (text_start, text_end) = match self.text_align_y {
@@ -130,7 +130,7 @@ impl UiElement for TextLabel {
             _ => (abs_pos, [abs_pos[0] + abs_size[0], abs_pos[1] + abs_size[1]])
         };
 
-        let text_col = self.desc.color().map(|v| (v * 255.0) as u8);
+        let text_col = self.desc.color.get().map(|v| (v * 255.0) as u8);
         let buff = &mut self.buffer;
         buff.set_size(pipeline_refs.font_system, Some(abs_size[0]), Some(abs_size[1]));
         buff.set_metrics(pipeline_refs.font_system, Metrics::new(self.text_size, self.line_height));
@@ -160,8 +160,8 @@ impl UiElement for TextLabel {
 
     fn as_any(&self) -> &dyn std::any::Any { self }
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any { self }
-    fn get_layer(&self) -> &UiLayer { &self.dims.layer() }
-    fn get_zindex(&self) -> u32 { *self.dims.zindex() }
-    fn set_layer(&mut self, layer: UiLayer) { self.dims.set_layer(layer); }
-    fn set_zindex(&mut self, zindex: u32) { self.dims.set_zindex(zindex); }
+    fn get_layer(&self) -> &UiLayer { &self.dims.layer }
+    fn get_zindex(&self) -> u32 { self.dims.zindex }
+    fn set_layer(&mut self, layer: UiLayer) { self.dims.layer = layer; }
+    fn set_zindex(&mut self, zindex: u32) { self.dims.zindex = zindex; }
 }

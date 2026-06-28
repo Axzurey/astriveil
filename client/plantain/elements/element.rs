@@ -4,7 +4,7 @@ use nalgebra::Vector2;
 use wgpu::RenderPass;
 use winit::event::{ElementState, KeyEvent, MouseButton};
 use getset::{Getters, MutGetters, Setters, WithSetters};
-use crate::plantain::{elements::screen::UiLayer, render_queue::PipelineRefs, vertices::ui_vertex::UiVertex};
+use crate::plantain::{elements::{screen::UiLayer, uianim::DynValue}, render_queue::PipelineRefs, vertices::ui_vertex::UiVertex};
 use std::any::Any;
 
 pub struct Timer {
@@ -62,7 +62,7 @@ pub trait InputElement: UiElement {
     fn mouse_event(&mut self, button: &MouseButton, state: &ElementState, is_focused: bool, screen_dims: [f32; 2], mouse_pos: &Vector2<f32>) -> EventProcessResult;
 }
 
-#[derive(Default)]
+#[derive(Default, Clone, Copy)]
 pub struct DimD2 {
     pub scale_x: f32,
     pub scale_y: f32,
@@ -96,24 +96,19 @@ impl DimD2 {
 
 #[derive(Getters, Setters, WithSetters, MutGetters)]
 pub struct ElementDims {
-    #[getset(get = "pub", set = "pub", get_mut = "pub")]
-    position: DimD2,
-    #[getset(get = "pub", set = "pub", get_mut = "pub")]
-    size: DimD2,
-    #[getset(get = "pub", set = "pub", get_mut = "pub")]
-    rotation: f32,
-    #[getset(get = "pub", set = "pub", get_mut = "pub")]
-    layer: UiLayer,
-    #[getset(get = "pub", set = "pub", get_mut = "pub")]
-    zindex: u32,
+    pub position: DynValue<DimD2>,
+    pub size: DynValue<DimD2>,
+    pub rotation: DynValue<f32>,
+    pub layer: UiLayer,
+    pub zindex: u32,
 }
 
 impl Default for ElementDims {
     fn default() -> Self {
         Self {
-            position: DimD2::default(),
-            size: DimD2::from_offset(200., 200.),
-            rotation: 0.0,
+            position: DynValue::new(DimD2::default()),
+            size: DynValue::new(DimD2::from_offset(200., 200.)),
+            rotation: DynValue::new(0.),
             layer: UiLayer::Element,
             zindex: 0
         }
@@ -122,17 +117,15 @@ impl Default for ElementDims {
 
 #[derive(Getters, Setters, WithSetters, MutGetters)]
 pub struct ElementDesc {
-    #[getset(get = "pub", set = "pub", get_mut = "pub")]
-    color: [f32; 4],
-    #[getset(get = "pub", set = "pub", get_mut = "pub")]
-    background_color: [f32; 4],
+    pub color: DynValue<[f32; 4]>,
+    pub background_color: DynValue<[f32; 4]>,
 }
 
 impl Default for ElementDesc {
     fn default() -> Self {
         Self {
-            color: [0.9, 0.9, 0.9, 1.0],
-            background_color: [0.1, 0.5, 0.1, 1.0]
+            color: DynValue::new([0.9, 0.9, 0.9, 1.0]),
+            background_color: DynValue::new([0.1, 0.5, 0.1, 1.0])
         }
     }
 }
@@ -143,20 +136,17 @@ pub fn convert_01_to_color(n: &[f32; 4]) -> Color {
 
 #[derive(Getters, Setters, WithSetters, MutGetters)]
 pub struct Border {
-    #[getset(get = "pub", set = "pub", get_mut = "pub")]
-    color: [f32; 4],
-    #[getset(get = "pub", set = "pub", get_mut = "pub")]
-    thickness: f32,
-    #[getset(get = "pub", set = "pub", get_mut = "pub")]
-    corner_radius: [f32; 4]
+    pub color: DynValue<[f32; 4]>,
+    pub thickness: DynValue<f32>,
+    pub corner_radius: DynValue<[f32; 4]>
 }
 
 impl Default for Border {
     fn default() -> Self {
         Self {
-            thickness: 5.0,
-            color: [0.0, 0.0, 0.0, 1.0],
-            corner_radius: [4.0, 4.0, 4.0, 4.0]
+            thickness: DynValue::new(5.0),
+            color: DynValue::new([0.0, 0.0, 0.0, 1.0]),
+            corner_radius: DynValue::new([4.0, 4.0, 4.0, 4.0])
         }
     }
 }

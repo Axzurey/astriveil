@@ -4,3 +4,4 @@ pub mod screen;
 pub mod image_frame;
 pub mod textlabel;
 pub mod textbox;
+pub mod uianim;

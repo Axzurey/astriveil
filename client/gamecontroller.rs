@@ -153,11 +153,11 @@ impl<'a> GameController<'a> {
         //ui_screen.add_child(ImageFrame::new());
         let mut label = TextBox::new(&mut ui_renderqueue.font_system);
         label.set_layer(UiLayer::Menu);
-        label.border.set_corner_radius([5., 5., 5., 5.]);
-        label.border.set_color([1., 1., 1., 1.]);
-        label.border.set_thickness(2.);
-        label.dims.set_position(DimD2::from_scale(0.5, 0.5));
-        label.dims.set_size(DimD2::from_offset(320., 54.));
+        label.border.corner_radius.set([5., 5., 5., 5.]);
+        label.border.color.set([1., 1., 1., 1.]);
+        label.border.thickness.set(2.);
+        label.dims.position.set(DimD2::from_scale(0.5, 0.5));
+        label.dims.size.set(DimD2::from_offset(320., 54.));
         label.set_text_size(42.);
         label.set_line_height(42.);
         label.set_text_align_x(glyphon::cosmic_text::Align::Left);
@@ -166,7 +166,8 @@ impl<'a> GameController<'a> {
         let mut text = TextLabel::new(&mut ui_renderqueue.font_system);
         text.set_text("This is text...");
         text.set_text_size(52.0);
-        text.dims.set_size(DimD2::from_offset(300., 95.));
+        text.set_line_height(52.0);
+        text.dims.size.set(DimD2::from_offset(300., 95.));
 
         ui_screen.add_child(label);
         ui_screen.add_child(text);
