@@ -40,17 +40,17 @@ fn vs_main(vertex: VertexInput) -> VertexOutput {
     return vertex_output;
 }
 
-@group(0) @binding(0)
+@group(1) @binding(0)
 var textures: texture_2d_array<f32>;
 
-@group(0) @binding(1)
+@group(1) @binding(1)
 var sample: sampler;
 
 struct Camera {
     view_proj: mat4x4<f32>
 }
 
-@group(1) @binding(0)
+@group(0) @binding(0)
 var<uniform> camera: Camera;
 
 //top left, top right, bottom right, bottom left

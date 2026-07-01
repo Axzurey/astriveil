@@ -40,7 +40,8 @@ pub struct Screen {
     pub cam_buffer: wgpu::Buffer,
     pub cam_bg: wgpu::BindGroup,
     pub cam_bgl: wgpu::BindGroupLayout,
-    pub focused_element: Option<usize>
+    pub focused_element: Option<usize>,
+    pub hovered_element: Option<usize>
 }
 
 impl Screen {
@@ -86,7 +87,8 @@ impl Screen {
             cam_buffer,
             cam_bg: camera_bind_group,
             cam_bgl: camera_bind_group_layout,
-            focused_element: None
+            focused_element: None,
+            hovered_element: None
         }
     }
 
@@ -156,7 +158,41 @@ impl Screen {
                             self.focused_element = None;
                             return true;
                         }
+                    },
+                    _ => {}
+                }
+            }
+        }
+        false
+    }
+
+    pub fn mouse_motion(&mut self, mouse_pos: &Vector2<f32>) -> bool {
+        let mut groups = self.children.iter_mut().into_group_map_by(|v| v.1.get_layer().clone());
+        for (layer, elements) in groups.iter_mut().sorted_by(|a, b| a.0.cmp(b.0)) {
+            let iter = elements.iter_mut()
+                .filter_map(|v| {
+                    v.1.as_input_element_mut().map(|x| (v.0, x))
+                })
+                .sorted_by(|a, b| a.1.get_zindex().cmp(&b.1.get_zindex()));
+            
+            for (id, item) in iter {
+                let is_hovered = if let Some(target) = self.hovered_element {
+                    target == id
+                } else {false};
+                let res = item.mouse_move(mouse_pos, [self.width as f32, self.height as f32], is_hovered);
+                match res {
+                    EventProcessResult::Nothing => {},
+                    EventProcessResult::HoverDrop => {
+                        if is_hovered {
+                            self.hovered_element = None;
+                            return true;
+                        }
+                    },
+                    EventProcessResult::HoverTake => {
+                        self.hovered_element = Some(id);
+                        return true;
                     }
+                    _ => {}
                 }
             }
         }
@@ -191,7 +227,8 @@ impl Screen {
                             self.focused_element = None;
                             return true;
                         }
-                    }
+                    },
+                    _ => {}
                 }
             }
         }
@@ -199,6 +236,7 @@ impl Screen {
     }
 
     pub fn draw_to_buffers(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, render_pass: &mut RenderPass, pipeline_refs: &mut PipelineRefs) {
+        println!("Q START");
         let mut groups = self.children.iter_mut().into_group_map_by(|v| *v.1.get_layer());
         for (layer, elements) in groups.iter_mut().sorted_by(|a, b| a.0.cmp(b.0)) {
             let e = elements.iter_mut()
@@ -207,9 +245,13 @@ impl Screen {
                 let is_focused = if let Some(target) = self.focused_element {
                     target == *id
                 } else {false};
-
+                println!("Iter.");
+                render_pass.set_bind_group(1, Some(&pipeline_refs.bindgroups.texture_bin.block_texture_bindgroup), &[]);
+                render_pass.set_bind_group(0, Some(&self.cam_bg), &[]);
                 element.draw(device, queue, render_pass, pipeline_refs, is_focused);
+                //TODO i guess we have to accumilate text
             }
         }
+        println!("Q END");
     }
 }

@@ -27,9 +27,9 @@ pub fn create_ui_render_pipeline(device: &wgpu::Device, queue: &wgpu::Queue, bin
     })];
     
     let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
-        label: Some("UI Render Pipeline"),
+        label: Some("FRAME UI Render Pipeline"),
         layout: Some(&device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: Some("UI pipeline layout"),
+            label: Some("frame UI pipeline layout"),
             bind_group_layouts: &bindgroup_layouts,
             immediate_size: 0
         })),
@@ -88,9 +88,9 @@ pub fn create_ui_image_pipeline(device: &wgpu::Device, queue: &wgpu::Queue, bind
     })];
     
     let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
-        label: Some("UI Render Pipeline"),
+        label: Some("IMAGE UI Render Pipeline"),
         layout: Some(&device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: Some("UI pipeline layout"),
+            label: Some("image UI pipeline layout"),
             bind_group_layouts: &bindgroup_layouts,
             immediate_size: 0
         })),

@@ -1,3 +1,5 @@
+use instant::Instant;
+
 use crate::plantain::elements::element::DimD2;
 
 pub trait Lerpable: Copy + Clone {
@@ -41,36 +43,23 @@ impl Lerpable for nalgebra::Vector3<f32> {
 pub struct DynAnimation<T: Lerpable> {
     origin: T,
     target: T,
-    duration: f32,
-    current: T,
-    elapsed: f32,
-    finished: bool
+    duration: f64,
+    started: Instant
 }
 
 impl<T: Lerpable> DynAnimation<T> {
-    pub fn new(origin: T, target: T, duration: f32) -> Self {
+    pub fn new(origin: T, target: T, duration: f64) -> Self {
         Self {
             origin, target, duration,
-            elapsed: 0.,
-            current: origin,
-            finished: false
+            started: Instant::now()
         }
     }
-    pub fn update(&mut self, dt: f32) {
-        if self.finished {return;}
+    pub fn get(&self) -> T {
+        let difference = Instant::now() - self.started;
 
-        self.elapsed = (self.elapsed + dt).clamp(0.0, self.duration);
+        let alpha = (difference.as_secs_f64() / self.duration).clamp(0.0, 1.0) as f32;
 
-        let alpha = self.elapsed / self.duration;
-
-        self.current = self.origin.lerp(self.target, alpha);
-
-        if self.elapsed >= self.duration {
-            self.finished = true;
-        }
-    }
-    pub fn get(&self) -> &T {
-        &self.current
+        self.origin.lerp(self.target, alpha)
     }
 }
 
@@ -86,17 +75,18 @@ impl<T: Lerpable> DynValue<T> {
             animation: None
         }
     }
-    pub fn get(&self) -> &T {
+    pub fn get(&mut self) -> &T {
         match &self.animation {
-            Some(u) => if u.finished {&self.value} else {u.get()},
-            None => &self.value
+            Some(u) => self.value = u.get(),
+            None => {}
         }
+        &self.value
     }
     pub fn set(&mut self, v: T) {
         self.value = v;
     }
 
-    pub fn animate_to(&mut self, target: T, duration: f32) {
+    pub fn animate_to(&mut self, target: T, duration: f64) {
         self.animation = Some(DynAnimation::new(self.value, target, duration));
     }
 }

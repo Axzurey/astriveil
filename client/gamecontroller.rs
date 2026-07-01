@@ -5,7 +5,7 @@ use shared::{loaders::{model_bin::ModelBin, texture_bin::TextureBin}, world::ent
 use wgpu::{BackendOptions, CurrentSurfaceTexture, MemoryBudgetThresholds, TextureFormat};
 use winit::{dpi::PhysicalSize, event::{ElementState, KeyEvent, MouseButton}, keyboard::PhysicalKey};
 
-use crate::{gameloop::{entitybin::EntityBin, world::World}, nominal::camera::Camera, plantain::{elements::{element::{DimD2, UiElement}, frame::Frame, image_frame::ImageFrame, screen::{Screen, UiLayer}, textbox::TextBox, textlabel::TextLabel}, render_queue::UiRenderQueue}, renderer::renderer::Renderer};
+use crate::{gameloop::{entitybin::EntityBin, world::World}, nominal::camera::Camera, plantain::{elements::{element::{DimD2, UiElement}, frame::Frame, image_frame::ImageFrame, screen::{Screen, UiLayer}, text_button::TextButton, textbox::TextBox, textlabel::TextLabel}, render_queue::{UiLayouts, UiRenderQueue}}, renderer::renderer::Renderer};
 
 struct WorldState {
     pub world: World,
@@ -147,7 +147,12 @@ impl<'a> GameController<'a> {
 
         let mut ui_screen = Screen::new(&device, size.width, size.height);
 
-        let mut ui_renderqueue = UiRenderQueue::new(&device, &queue, vec![Some(&game_bindgroups.texture_bin.block_texture_bindgroup_layout), Some(&ui_screen.cam_bgl)], surface_format);
+        let uilayouts = UiLayouts {
+            camera_layout: &ui_screen.cam_bgl,
+            block_texture_bindgroup_layout: &game_bindgroups.texture_bin.block_texture_bindgroup_layout
+        };
+
+        let mut ui_renderqueue = UiRenderQueue::new(&device, &queue, uilayouts, surface_format);
 
         //ui_screen.add_child(Frame::new());
         //ui_screen.add_child(ImageFrame::new());
@@ -165,10 +170,19 @@ impl<'a> GameController<'a> {
 
         let mut text = TextLabel::new(&mut ui_renderqueue.font_system);
         text.set_text("This is text...");
+        text.set_layer(UiLayer::Menu);
         text.set_text_size(52.0);
         text.set_line_height(52.0);
         text.dims.size.set(DimD2::from_offset(300., 95.));
+        text.dims.rotation.animate_to(360., 5.);
 
+        let mut button = TextButton::new(&mut ui_renderqueue.font_system);
+        button.set_text("This a button");
+        button.set_layer(UiLayer::Menu);
+        button.dims.size.set(DimD2::from_offset(380., 75.));
+        button.dims.position.set(DimD2::from_scale(0.6, 0.3));
+
+        ui_screen.add_child(button);
         ui_screen.add_child(label);
         ui_screen.add_child(text);
 
@@ -284,6 +298,8 @@ impl<'a> GameController<'a> {
         }
     }
     pub fn on_window_mouse_motion(&mut self, dx: f64, dy: f64) {
+        let consumed = self.ui_screen.mouse_motion(&self.mouse_position);
+        if consumed {return}
         match &mut self.game_state {
             GameState::InWorld(worldstate) => {
                 worldstate.camera.controller.process_mouse_input(dx, dy);

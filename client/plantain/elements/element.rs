@@ -54,12 +54,15 @@ pub enum EventProcessResult {
     Nothing,
     Sink,
     Focus,
-    FocusDrop
+    FocusDrop,
+    HoverTake,
+    HoverDrop
 }
 
 pub trait InputElement: UiElement {
     fn key_event(&mut self, event: &KeyEvent, is_focused: bool, font_system: &mut FontSystem) -> EventProcessResult;
     fn mouse_event(&mut self, button: &MouseButton, state: &ElementState, is_focused: bool, screen_dims: [f32; 2], mouse_pos: &Vector2<f32>) -> EventProcessResult;
+    fn mouse_move(&mut self, mouse_pos: &Vector2<f32>, screen_dims: [f32; 2], is_hovered: bool) -> EventProcessResult;
 }
 
 #[derive(Default, Clone, Copy)]
